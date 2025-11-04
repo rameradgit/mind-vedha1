@@ -1,0 +1,230 @@
+<!-- SIMPLE ALTERNATIVE VERSION - Copy this entire code to a file named: svastha-simple.html -->
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Svastha</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest"></script>
+<style>
+body { background: linear-gradient(135deg, #E0F7FA 0%, #B3E5FC 100%); font-family: Arial; margin: 0; padding: 0; min-height: 100vh; }
+.navbar { background: white; padding: 20px 40px; border-bottom: 3px solid #B3E5FC; display: flex; justify-content: space-between; }
+.navbar h1 { color: #000; font-weight: 700; margin: 0; }
+.navbar button { background: #01579B; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 700; cursor: pointer; }
+.navbar button:hover { background: #004687; }
+.container { max-width: 1200px; margin: 40px auto; padding: 20px; }
+.page { display: none; }
+.page.show { display: block; }
+.landing { text-align: center; background: white; padding: 60px 40px; border-radius: 12px; border: 3px solid #B3E5FC; max-width: 600px; margin: 0 auto; }
+.landing h1 { color: #000; font-weight: 700; font-size: 48px; margin: 0; }
+.landing p { color: #000; font-weight: 600; font-size: 18px; margin: 16px 0; }
+.landing button { background: #01579B; color: white; border: none; padding: 16px 40px; font-size: 18px; font-weight: 700; border-radius: 8px; cursor: pointer; margin: 12px; }
+.landing button:hover { background: #004687; }
+.landing a { color: #000; font-weight: 600; text-decoration: underline; cursor: pointer; margin-top: 20px; display: inline-block; }
+.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+.modal.show { display: flex; }
+.modal-content { background: white; padding: 40px; border-radius: 12px; max-width: 400px; }
+.modal-content h2 { color: #000; font-weight: 700; margin-top: 0; }
+.modal-content input { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #E0F7FA; border-radius: 6px; font-size: 14px; font-weight: 600; }
+.modal-content button { width: 100%; padding: 12px; background: #01579B; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; margin-top: 10px; }
+.modal-content button:hover { background: #004687; }
+.close { float: right; font-size: 28px; font-weight: 700; cursor: pointer; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.card { background: white; border: 3px solid #B3E5FC; border-radius: 12px; padding: 24px; }
+.card h3 { color: #000; font-weight: 700; margin: 0 0 12px 0; }
+.card p { color: #666; font-weight: 600; margin: 0 0 16px 0; }
+.card button { background: #01579B; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 700; cursor: pointer; }
+.card button:hover { background: #004687; }
+.emergency { background: linear-gradient(135deg, #FF6B6B 0%, #FF5252 100%); border: 3px solid #FF5252; }
+.emergency h3, .emergency p { color: white; }
+.emergency button { background: white; color: #FF5252; }
+#webcam-canvas { border: 3px solid #B3E5FC; border-radius: 12px; max-width: 100%; margin: 20px 0; }
+.emotion-display { background: linear-gradient(135deg, #01579B 0%, #0277BD 100%); color: white; padding: 30px; border-radius: 12px; text-align: center; margin: 20px 0; }
+.emotion-display h2 { font-size: 48px; margin: 0 0 10px 0; }
+.predictions { margin: 20px 0; }
+.prediction { background: #E0F7FA; padding: 10px 16px; margin: 8px 0; border-radius: 6px; border-left: 4px solid #01579B; display: flex; justify-content: space-between; color: #000; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<div class="navbar">
+  <h1>🌿 Svastha</h1>
+  <div id="userinfo" style="display:none;">
+    <span id="username" style="color:#000; font-weight:700; margin-right:20px;"></span>
+    <button onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<!-- LANDING PAGE -->
+<div id="landing" class="page show">
+<div class="container">
+<div class="landing">
+  <div style="font-size: 64px; margin-bottom: 20px;">🌿</div>
+  <h1>Svastha</h1>
+  <p>Your AI-Powered Wellness Companion</p>
+  <button onclick="openLogin()">🔓 LOGIN</button>
+  <a onclick="demoMode()">📖 Use Demo Mode</a>
+</div>
+</div>
+</div>
+
+<!-- LOGIN MODAL -->
+<div id="modal" class="modal">
+<div class="modal-content">
+  <span class="close" onclick="closeLogin()">&times;</span>
+  <h2>Welcome</h2>
+  <div id="googlebtn"></div>
+  <hr style="margin: 20px 0;">
+  <input type="email" id="email" placeholder="Email" />
+  <input type="password" id="pass" placeholder="Password" />
+  <button onclick="emailLogin()">Login</button>
+</div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="page">
+<div class="container">
+<div class="grid">
+
+<div class="card">
+  <h3>😊 Mood Tracker</h3>
+  <p>AI facial emotion detection</p>
+  <button onclick="goMood()">Start</button>
+</div>
+
+<div class="card">
+  <h3>💤 Sleep Tracking</h3>
+  <p>Monitor sleep patterns</p>
+  <button onclick="alert('Coming Soon')">View</button>
+</div>
+
+<div class="card">
+  <h3>🤖 BHISHMA AI</h3>
+  <p>Wellness assistant</p>
+  <button onclick="alert('Coming Soon')">Chat</button>
+</div>
+
+<div class="card">
+  <h3>🧘 Yoga Sessions</h3>
+  <p>Guided yoga classes</p>
+  <button onclick="alert('Coming Soon')">Start</button>
+</div>
+
+<div class="card">
+  <h3>👨‍⚕️ Counselor Support</h3>
+  <p>Professional help 24/7</p>
+  <button onclick="alert('Coming Soon')">Connect</button>
+</div>
+
+<div class="card emergency">
+  <h3>🚨 Emergency Call</h3>
+  <p>Need immediate help?</p>
+  <button onclick="emergency()">📞 CALL NOW</button>
+</div>
+
+</div>
+</div>
+</div>
+
+<!-- MOOD PAGE -->
+<div id="moodpage" class="page">
+<div class="container">
+<div style="background: white; padding: 30px; border-radius: 12px; border: 3px solid #B3E5FC;">
+<h2 style="color: #000; font-weight: 700; margin: 0 0 20px 0;">😊 Mood Detection</h2>
+<div id="webcam-container"></div>
+<div id="predictionsDiv" class="predictions"></div>
+<div id="emotionDiv" class="emotion-display"></div>
+<button style="background: #01579B; color: white; padding: 12px 24px; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; margin: 10px;" onclick="startMood()">📷 Start</button>
+<button style="background: #01579B; color: white; padding: 12px 24px; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; margin: 10px;" onclick="stopMood()">⏹️ Stop</button>
+<button style="background: #01579B; color: white; padding: 12px 24px; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; margin: 10px;" onclick="goPage('dashboard')">◀️ Back</button>
+</div>
+</div>
+</div>
+
+<script>
+function goPage(p) { document.querySelectorAll('.page').forEach(x => x.classList.remove('show')); document.getElementById(p).classList.add('show'); }
+function openLogin() { document.getElementById('modal').classList.add('show'); }
+function closeLogin() { document.getElementById('modal').classList.remove('show'); }
+function emailLogin() { 
+  const email = document.getElementById('email').value || 'user';
+  localStorage.setItem('user', JSON.stringify({name: email.split('@')[0], email, isDemoMode: false}));
+  showDash();
+}
+function demoMode() {
+  localStorage.setItem('user', JSON.stringify({name: 'Demo', email: 'demo@svastha.com', isDemoMode: true}));
+  showDash();
+}
+function showDash() {
+  closeLogin();
+  const user = JSON.parse(localStorage.getItem('user'));
+  document.getElementById('userinfo').style.display = 'block';
+  document.getElementById('username').textContent = 'Welcome, ' + user.name + '!';
+  goPage('dashboard');
+}
+function logout() {
+  localStorage.removeItem('user');
+  document.getElementById('userinfo').style.display = 'none';
+  goPage('landing');
+}
+function goMood() { goPage('moodpage'); }
+function emergency() {
+  alert('🚨 Emergency call to +91 9600080109\nVoice: User needs help\nCall connected!');
+  window.location.href = 'tel:+919600080109';
+}
+
+// MOOD DETECTION
+const MODEL_URL = 'https://teachablemachine.withgoogle.com/models/QUvmvHYzR/';
+let model, webcam, isRunning = false, emotion = '', conf = 0;
+async function startMood() {
+  try {
+    model = await tmImage.load(MODEL_URL + 'model.json', MODEL_URL + 'metadata.json');
+    webcam = new tmImage.Webcam(400, 400, true);
+    await webcam.setup();
+    await webcam.play();
+    isRunning = true;
+    document.getElementById('webcam-container').innerHTML = '';
+    document.getElementById('webcam-container').appendChild(webcam.canvas);
+    loop();
+  } catch(e) { alert('❌ Camera error. Grant permission.'); }
+}
+async function loop() {
+  if(!isRunning) return;
+  webcam.update();
+  const pred = await model.predict(webcam.canvas);
+  document.getElementById('predictionsDiv').innerHTML = '';
+  let max = 0, em = '';
+  pred.forEach((p, i) => {
+    const pct = Math.round(p.probability * 100);
+    const div = document.createElement('div');
+    div.className = 'prediction';
+    div.innerHTML = `<span>${p.className}</span><span>${pct}%</span>`;
+    document.getElementById('predictionsDiv').appendChild(div);
+    if(p.probability > max) { max = p.probability; em = p.className; }
+  });
+  if(max > 0.5) {
+    emotion = em; conf = Math.round(max * 100);
+    const emojis = {Happy: '😊', Sad: '😢', Angry: '😠', Neutral: '😐', Surprised: '😲', Fearful: '😨'};
+    document.getElementById('emotionDiv').innerHTML = `<h2>${emojis[em] || '😐'} ${em}</h2><p>Confidence: ${conf}%</p>`;
+  }
+  requestAnimationFrame(loop);
+}
+function stopMood() { isRunning = false; if(webcam) webcam.stop(); document.getElementById('webcam-container').innerHTML = ''; }
+
+// GOOGLE OAUTH
+function initGoog() {
+  if(!google) { setTimeout(initGoog, 500); return; }
+  google.accounts.id.initialize({client_id: 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com'});
+  google.accounts.id.renderButton(document.getElementById('googlebtn'), {type: 'standard', size: 'large'});
+}
+window.addEventListener('load', () => {
+  initGoog();
+  if(localStorage.getItem('user')) showDash();
+});
+</script>
+
+</body>
+</html>
